@@ -38,6 +38,12 @@ func (e *errorStack) Error() string {
 	return e.msg
 }
 
+func trace(skip int) []uintptr {
+	var callers [MaxStackLength]uintptr
+	n := runtime.Callers(skip, callers[:])
+	return callers[0:n]
+}
+
 // New returns an error that formats as the given text.
 func New(text string) error {
 	return &errorStack{msg: text, cause: nil, callers: trace(3)}
@@ -68,7 +74,7 @@ func Trace(err error) *runtime.Frames {
 	return nil
 }
 
-// String returns a full string of the specified error stack if there is one, otherwise nil.
+// String returns a full string of the specified error stack if there is one, otherwise empty string.
 // It also can include stack trace for each error in the stack.
 func String(err error, withTrace bool) string {
 	var buffer bytes.Buffer
@@ -103,8 +109,34 @@ func String(err error, withTrace bool) string {
 	return buffer.String()
 }
 
-func trace(skip int) []uintptr {
-	var callers [MaxStackLength]uintptr
-	n := runtime.Callers(skip, callers[:])
-	return callers[0:n]
+// Map converts the error stack into a nested map
+// so it can be easily marshalled to JSON.
+func Map(err error, withTrace bool) interface{} {
+
+	if err == nil {
+		return "null"
+	}
+
+	obj := map[string]interface{}{
+		"msg":   err.Error(),
+		"cause": Map(Cause(err), withTrace),
+	}
+
+	if withTrace {
+		t := make([]map[string]interface{}, 0)
+
+		if frames := Trace(err); frames != nil {
+			for {
+				frame, more := frames.Next()
+				t = append(t, map[string]interface{}{"func": frame.Function, "file": frame.File, "line": frame.Line})
+				if !more {
+					break
+				}
+			}
+		}
+
+		obj["trace"] = t
+	}
+
+	return obj
 }
