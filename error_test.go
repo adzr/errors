@@ -23,36 +23,36 @@ import (
 	"testing"
 )
 
-func TestCause(t *testing.T) {
-	if err := Cause(NewWithCause("error 1", New("error 2"))); err.Error() != "error 2" {
+func TestUnwrap(t *testing.T) {
+	if err := Unwrap(Wrap("error 1", New("error 2"))); err.Error() != "error 2" {
 		t.Errorf("error cause not matching the expected value")
 	}
 
-	if err := Cause(New("error 1")); err != nil {
+	if err := Unwrap(New("error 1")); err != nil {
 		t.Errorf("error expected cause must be nil")
 	}
 
-	if err := Cause(errors.New("error 1")); err != nil {
+	if err := Unwrap(errors.New("error 1")); err != nil {
 		t.Errorf("error expected cause must be nil")
 	}
 }
 
 func TestTrace(t *testing.T) {
-	if trc := Trace(NewWithCause("error 1", New("error 2"))); trc == nil {
+	if trc := StackTrace(Wrap("error 1", New("error 2"))); trc == nil {
 		t.Errorf("error trace must not be nil")
 	}
 
-	if trc := Trace(New("error 1")); trc == nil {
+	if trc := StackTrace(New("error 1")); trc == nil {
 		t.Errorf("error trace must not be nil")
 	}
 
-	if trc := Trace(errors.New("error 1")); trc != nil {
+	if trc := StackTrace(errors.New("error 1")); trc != nil {
 		t.Errorf("error trace must be nil")
 	}
 }
 
 func TestError(t *testing.T) {
-	if err := NewWithCause("error 1", New("error 2")); err.Error() != "error 1" {
+	if err := Wrap("error 1", New("error 2")); err.Error() != "error 1" {
 		t.Errorf("error string not matching the expected value")
 	}
 
@@ -62,7 +62,7 @@ func TestError(t *testing.T) {
 }
 
 func TestString(t *testing.T) {
-	err := NewWithCause("error 1", NewWithCause("error 2", New("error 3")))
+	err := Wrap("error 1", Wrap("error 2", New("error 3")))
 
 	if matches, _ := regexp.MatchString("\\A((\n \\-\\>)??.+?(\\n\\t\\^ .+?\\(.*?\\:\\d+?\\))+?){3}\\z", String(err, true)); !matches {
 		t.Errorf("error string not matching the expected value")
@@ -70,9 +70,9 @@ func TestString(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
-	err := NewWithCause("error 1", NewWithCause("error 2", New("error 3")))
+	err := Wrap("error 1", Wrap("error 2", New("error 3")))
 
-	s := `{"cause":{"cause":{"cause":"null","msg":"error 3","trace":[{"file":"/home/adzr/Documents/code/foss/errors/error_test.go","func":"github.com/adzr/errors.TestMap","line":73},{"file":"/home/adzr/Tools/packages/go/src/testing/testing.go","func":"testing.tRunner","line":827},{"file":"/home/adzr/Tools/packages/go/src/runtime/asm_amd64.s","func":"runtime.goexit","line":1333}]},"msg":"error 2","trace":[{"file":"/home/adzr/Documents/code/foss/errors/error_test.go","func":"github.com/adzr/errors.TestMap","line":73},{"file":"/home/adzr/Tools/packages/go/src/testing/testing.go","func":"testing.tRunner","line":827},{"file":"/home/adzr/Tools/packages/go/src/runtime/asm_amd64.s","func":"runtime.goexit","line":1333}]},"msg":"error 1","trace":[{"file":"/home/adzr/Documents/code/foss/errors/error_test.go","func":"github.com/adzr/errors.TestMap","line":73},{"file":"/home/adzr/Tools/packages/go/src/testing/testing.go","func":"testing.tRunner","line":827},{"file":"/home/adzr/Tools/packages/go/src/runtime/asm_amd64.s","func":"runtime.goexit","line":1333}]}`
+	s := `{"cause":{"cause":{"cause":"null","msg":"error 3","trace":[{"file":"/home/adzr/Documents/code/foss/errors/error_test.go","func":"github.com/adzr/errors.TestMap","line":73},{"file":"/home/adzr/Tools/packages/go/src/testing/testing.go","func":"testing.tRunner","line":865},{"file":"/home/adzr/Tools/packages/go/src/runtime/asm_amd64.s","func":"runtime.goexit","line":1337}]},"msg":"error 2","trace":[{"file":"/home/adzr/Documents/code/foss/errors/error_test.go","func":"github.com/adzr/errors.TestMap","line":73},{"file":"/home/adzr/Tools/packages/go/src/testing/testing.go","func":"testing.tRunner","line":865},{"file":"/home/adzr/Tools/packages/go/src/runtime/asm_amd64.s","func":"runtime.goexit","line":1337}]},"msg":"error 1","trace":[{"file":"/home/adzr/Documents/code/foss/errors/error_test.go","func":"github.com/adzr/errors.TestMap","line":73},{"file":"/home/adzr/Tools/packages/go/src/testing/testing.go","func":"testing.tRunner","line":865},{"file":"/home/adzr/Tools/packages/go/src/runtime/asm_amd64.s","func":"runtime.goexit","line":1337}]}`
 
 	if b, _ := json.Marshal(Map(err, true)); string(b) != s {
 		t.Errorf("error string '%v' not matching the expected value '%v'", string(b), s)
