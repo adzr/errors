@@ -39,10 +39,10 @@ Example
 
   // And here is how to get the error details.
   println(err.Error()) // this will print 'this is an error'
-  println(errors.Cause(err)) // this will print <nil>
+  println(errors.Unwrap(err)) // this will print <nil>
 
   // This code block...
-  frames := errors.Trace(err)
+  frames := errors.StackTrace(err)
 	for {
 		frame, more := frames.Next()
 		fmt.Printf("%v(%v:%v)\n", frame.Function, frame.File, frame.Line)
@@ -55,17 +55,17 @@ Example
   // testing.tRunner($GOROOT/src/testing/testing.go:777)
   // runtime.goexit($GOROOT/src/runtime/asm_amd64.s:2361)
 
-  println(errors.String(err, false)) // this will print 'this is an error'
+  println(errors.Describe(err, false)) // this will print 'this is an error'
 
   // However, this...
-  println(errors.String(err, true))
+  println(errors.Describe(err, true))
   // will print something like this:
   // this is an error
-	//    ^ example.TestErrors($GOPATH/src/github.com/adzr/errors/error_test.go:75)
-	//    ^ testing.tRunner($GOROOT/src/testing/testing.go:777)
-	//    ^ runtime.goexit($GOROOT/src/runtime/asm_amd64.s:2361)
+	//    example.TestErrors($GOPATH/src/github.com/adzr/errors/error_test.go:75)
+	//    testing.tRunner($GOROOT/src/testing/testing.go:777)
+	//    runtime.goexit($GOROOT/src/runtime/asm_amd64.s:2361)
 
-  // Same functions can be used with errWithCause.
-  errors.String(errors.NewWithCause("this is an error", errors.New("this is the cause")), true)
+  // Same functions can be used with errWithUnwrap.
+  errors.Describe(errors.Wrap("this is an error", errors.New("this is the cause")), true)
 */
 package errors

@@ -22,12 +22,6 @@ import (
 	"runtime"
 )
 
-const (
-	// MaxStackLength is the maximum count of stacked errors that can be
-	// processed by the libarary's functions.
-	MaxStackLength int = 32
-)
-
 // A Wrapper is an error implementation
 // wrapping context around another error.
 type Wrapper interface {
@@ -37,41 +31,41 @@ type Wrapper interface {
 }
 
 func trace(skip int) []uintptr {
-	var callers [MaxStackLength]uintptr
+	var callers [512]uintptr
 	n := runtime.Callers(skip, callers[:])
 	return callers[0:n]
 }
 
-type errorWrapper struct {
+type wrapper struct {
 	msg     string
-	wrapped error
+	wrap    error
 	callers []uintptr
 }
 
-func (w *errorWrapper) Error() string {
+func (w *wrapper) Error() string {
 	return w.msg
 }
 
-func (w *errorWrapper) Unwrap() error {
-	return w.wrapped
+func (w *wrapper) Unwrap() error {
+	return w.wrap
 }
 
 // New returns an error that formats as the given text.
 func New(text string) error {
-	return &errorWrapper{msg: text, wrapped: nil, callers: trace(3)}
+	return &wrapper{msg: text, wrap: nil, callers: trace(3)}
 }
 
 // Wrap returns an error that formats as the given text encapsulating a cause.
 func Wrap(text string, cause error) error {
-	return &errorWrapper{msg: text, wrapped: cause, callers: trace(3)}
+	return &wrapper{msg: text, wrap: cause, callers: trace(3)}
 }
 
 // Unwrap returns the wrapped error if there is one, otherwise nil.
-func Unwrap(e error) error {
+func Unwrap(err error) error {
 
-	if e != nil {
-		if err, ok := e.(*errorWrapper); ok {
-			return err.Unwrap()
+	if err != nil {
+		if e, ok := err.(*wrapper); ok {
+			return e.Unwrap()
 		}
 	}
 
@@ -81,35 +75,26 @@ func Unwrap(e error) error {
 // StackTrace returns the runtime frames of the specified error if there is one, otherwise nil.
 func StackTrace(err error) *runtime.Frames {
 	if err != nil {
-		if e, ok := err.(*errorWrapper); ok {
+		if e, ok := err.(*wrapper); ok {
 			return runtime.CallersFrames(e.callers)
 		}
 	}
 	return nil
 }
 
-// String returns a full string of the specified error stack if there is one, otherwise empty string.
+// Describe returns a full string of the specified error stack if there is one, otherwise empty string.
 // It also can include stack trace for each error in the stack.
-func String(err error, stackTrace bool) string {
+func Describe(err error, stackTrace bool) string {
 	var buffer bytes.Buffer
-	var e = err
 
-	for i := 0; i < MaxStackLength; i++ {
-		if e == nil {
-			break
-		}
-
-		if i > 0 {
-			buffer.WriteString("\n -> ")
-		}
-
-		buffer.WriteString(e.Error())
+	for err != nil {
+		buffer.WriteString(err.Error())
 
 		if stackTrace {
-			if frames := StackTrace(e); frames != nil {
+			if frames := StackTrace(err); frames != nil {
 				for {
 					frame, more := frames.Next()
-					buffer.WriteString(fmt.Sprintf("\n\t^ %v(%v:%v)", frame.Function, frame.File, frame.Line))
+					buffer.WriteString(fmt.Sprintf("\n\t%v(%v:%v)", frame.Function, frame.File, frame.Line))
 					if !more {
 						break
 					}
@@ -117,7 +102,11 @@ func String(err error, stackTrace bool) string {
 			}
 		}
 
-		e = Unwrap(e)
+		err = Unwrap(err)
+
+		if err != nil {
+			buffer.WriteString("\n")
+		}
 	}
 
 	return buffer.String()
@@ -128,12 +117,12 @@ func String(err error, stackTrace bool) string {
 func Map(err error, stackTrace bool) interface{} {
 
 	if err == nil {
-		return "null"
+		return nil
 	}
 
 	obj := map[string]interface{}{
-		"msg":   err.Error(),
-		"cause": Map(Unwrap(err), stackTrace),
+		"description": err.Error(),
+		"cause":       Map(Unwrap(err), stackTrace),
 	}
 
 	if stackTrace {
@@ -149,7 +138,7 @@ func Map(err error, stackTrace bool) interface{} {
 			}
 		}
 
-		obj["trace"] = t
+		obj["callers"] = t
 	}
 
 	return obj

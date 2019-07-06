@@ -19,7 +19,6 @@ package errors
 import (
 	"encoding/json"
 	"errors"
-	"regexp"
 	"testing"
 )
 
@@ -61,20 +60,18 @@ func TestError(t *testing.T) {
 	}
 }
 
-func TestString(t *testing.T) {
+func TestDescribe(t *testing.T) {
 	err := Wrap("error 1", Wrap("error 2", New("error 3")))
 
-	if matches, _ := regexp.MatchString("\\A((\n \\-\\>)??.+?(\\n\\t\\^ .+?\\(.*?\\:\\d+?\\))+?){3}\\z", String(err, true)); !matches {
-		t.Errorf("error string not matching the expected value")
+	if s := Describe(err, true); len(s) == 0 {
+		t.Errorf("error string is empty")
 	}
 }
 
 func TestMap(t *testing.T) {
 	err := Wrap("error 1", Wrap("error 2", New("error 3")))
 
-	s := `{"cause":{"cause":{"cause":"null","msg":"error 3","trace":[{"file":"/home/adzr/Documents/code/foss/errors/error_test.go","func":"github.com/adzr/errors.TestMap","line":73},{"file":"/home/adzr/Tools/packages/go/src/testing/testing.go","func":"testing.tRunner","line":865},{"file":"/home/adzr/Tools/packages/go/src/runtime/asm_amd64.s","func":"runtime.goexit","line":1337}]},"msg":"error 2","trace":[{"file":"/home/adzr/Documents/code/foss/errors/error_test.go","func":"github.com/adzr/errors.TestMap","line":73},{"file":"/home/adzr/Tools/packages/go/src/testing/testing.go","func":"testing.tRunner","line":865},{"file":"/home/adzr/Tools/packages/go/src/runtime/asm_amd64.s","func":"runtime.goexit","line":1337}]},"msg":"error 1","trace":[{"file":"/home/adzr/Documents/code/foss/errors/error_test.go","func":"github.com/adzr/errors.TestMap","line":73},{"file":"/home/adzr/Tools/packages/go/src/testing/testing.go","func":"testing.tRunner","line":865},{"file":"/home/adzr/Tools/packages/go/src/runtime/asm_amd64.s","func":"runtime.goexit","line":1337}]}`
-
-	if b, _ := json.Marshal(Map(err, true)); string(b) != s {
-		t.Errorf("error string '%v' not matching the expected value '%v'", string(b), s)
+	if b, _ := json.Marshal(Map(err, true)); len(string(b)) == 0 {
+		t.Errorf("error string is empty")
 	}
 }
